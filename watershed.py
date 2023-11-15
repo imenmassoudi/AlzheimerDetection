@@ -16,7 +16,7 @@ def calculate_segmented_volume(image):
     gray = cv2.GaussianBlur(gray, (5, 5), 0)
     _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     distance_transform = cv2.distanceTransform(thresh, cv2.DIST_L2, 3)
-    _, sure_fg = cv2.threshold(distance_transform, 0.7 * distance_transform.max(), 255, 0)
+    _, sure_fg = cv2.threshold(distance_transform, 0.2 * distance_transform.max(), 255, 0)
     sure_fg = np.uint8(sure_fg)
     unknown = cv2.subtract(thresh, sure_fg)
     _, markers = cv2.connectedComponents(sure_fg)

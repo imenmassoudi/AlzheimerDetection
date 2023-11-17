@@ -4,6 +4,8 @@ import os
 import pandas as pd
 import random
 
+
+#filtre de rehaussement pour améliorer le contraste et les contours de l'image
 def apply_sharpening_filter(image):
     sharpening_filter = np.array([[0, -1, 0],
                                    [-1, 5, -1],
@@ -11,9 +13,12 @@ def apply_sharpening_filter(image):
     sharpened_image = cv2.filter2D(image, -1, sharpening_filter)
     return sharpened_image
 
+#calcul de volume de la substance grise
+#utilisation de la méthode de watershed + filtre gaussien+rehausseur+transformation en distances
 def calculate_segmented_volume(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    gray = cv2.GaussianBlur(gray, (5, 5), 0)
+    x = apply_sharpening_filter(gray)
+    gray = cv2.GaussianBlur(x, (5, 5), 0)
     _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     distance_transform = cv2.distanceTransform(thresh, cv2.DIST_L2, 3)
     _, sure_fg = cv2.threshold(distance_transform, 0.2 * distance_transform.max(), 255, 0)
@@ -29,6 +34,9 @@ def calculate_segmented_volume(image):
     #cv2.waitKey(0)
     #cv2.destroyAllWindows()
     return segmented_volume
+
+
+#Methode pour la classification des images : demented / non demented - Pour cela on calcule le volume moyen, l'enregistre dans CSV afin de l'utiliser après
 def classify_image(image_path, class_average_volumes):
     # Charger l'image
     if not os.path.exists(image_path):

@@ -19,19 +19,18 @@ class PatientApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Patient Management System")
-        self.root.geometry("800x600")  # Set the initial size
-        self.center_window()  # Center the window on the screen
+        self.root.geometry("800x600")
+        self.center_window()
         self.db_connection = sqlite3.connect("patients.db")
         self.create_table()
         self.patients = []
         self.create_widgets()
 
     def center_window(self):
-        # Center the window on the screen
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
-        window_width = 800  # Adjust the width as needed
-        window_height = 600  # Adjust the height as needed
+        window_width = 800
+        window_height = 600
 
         x_coordinate = (screen_width - window_width) // 2
         y_coordinate = (screen_height - window_height) // 2
@@ -41,11 +40,9 @@ class PatientApp:
     def create_table(self):
         cursor = self.db_connection.cursor()
 
-        # Check if patients table exists
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='patients'")
         patients_table_exists = cursor.fetchone()
 
-        # Check if volumes table exists
         cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='volumes'")
         volumes_table_exists = cursor.fetchone()
 
@@ -117,9 +114,17 @@ class PatientApp:
 
     def delete_patient(self):
         if self.selected_index is not None:
-            patient_id = self.patients[self.selected_index].patient_id
+            patient = self.patients[self.selected_index]
+            patient_id = patient.patient_id
+
             cursor = self.db_connection.cursor()
+
+            # Supprimer les volumes associés au patient
+            cursor.execute('DELETE FROM volumes WHERE patient_id = ?', (patient_id,))
+
+            # Supprimer le patient
             cursor.execute('DELETE FROM patients WHERE id = ?', (patient_id,))
+
             self.db_connection.commit()
             self.selected_index = None
             self.update_listbox()
@@ -139,6 +144,48 @@ class PatientApp:
             print(row)
 
 
+    # def view_details(self):
+    #     if self.selected_index is not None:
+    #         patient = self.patients[self.selected_index]
+    #         self.clear_widgets()
+    #
+    #         details_frame = tk.Frame(self.root)
+    #         details_frame.pack(expand=True, fill='both')
+    #
+    #         details_label = tk.Label(details_frame, text=f"Details for {patient.name}:\n{patient.details}", font=("Helvetica", 14))
+    #         details_label.pack(pady=10)
+    #
+    #         # Display volume information
+    #         volume_label = tk.Label(details_frame, text=f"Volumes:", font=("Helvetica", 14))
+    #         volume_label.pack(pady=10)
+    #
+    #         # Fetch patient_id based on the patient's name
+    #         patient_id = self.get_patient_id(patient.name)
+    #
+    #         if patient_id is not None:
+    #             volumes = self.get_patient_volumes(patient_id)
+    #             print(f"Volumes for {patient.name}: {volumes}")
+    #             for volume in volumes:
+    #                 volume_id, volume_data, cl = volume
+    #                 volume_label = tk.Label(details_frame, text=f"  - Volume ID {volume_id}: {volume_data} ({cl})", font=("Helvetica", 12))
+    #                 volume_label.pack()
+    #
+    #         else:
+    #             print(f"No patient found with the name: {patient.name}")
+    #
+    #         # Display image if available
+    #         if patient.image_path:
+    #             image = Image.open(patient.image_path)
+    #             image = image.resize((300, 300))
+    #             photo = ImageTk.PhotoImage(image)
+    #
+    #             image_label = tk.Label(details_frame, image=photo)
+    #             image_label.image = photo
+    #             image_label.pack(pady=10)
+    #
+    #         return_button = tk.Button(self.root, text="Return to List", command=self.return_to_list, font=("Helvetica", 12))
+    #         return_button.pack(pady=10)
+
     def view_details(self):
         if self.selected_index is not None:
             patient = self.patients[self.selected_index]
@@ -147,7 +194,8 @@ class PatientApp:
             details_frame = tk.Frame(self.root)
             details_frame.pack(expand=True, fill='both')
 
-            details_label = tk.Label(details_frame, text=f"Details for {patient.name}:\n{patient.details}", font=("Helvetica", 14))
+            details_label = tk.Label(details_frame, text=f"Details for {patient.name}:\n{patient.details}",
+                                     font=("Helvetica", 14))
             details_label.pack(pady=10)
 
             # Display volume information
@@ -160,10 +208,22 @@ class PatientApp:
             if patient_id is not None:
                 volumes = self.get_patient_volumes(patient_id)
                 print(f"Volumes for {patient.name}: {volumes}")
-                for volume in volumes:
+
+                # Display the last 2 volumes
+                last_volumes = volumes[-2:]
+                for volume in last_volumes:
                     volume_id, volume_data, cl = volume
-                    volume_label = tk.Label(details_frame, text=f"  - Volume ID {volume_id}: {volume_data} ({cl})", font=("Helvetica", 12))
+                    volume_label = tk.Label(details_frame, text=f"  - Volume ID {volume_id}: {volume_data} ({cl})",
+                                            font=("Helvetica", 12))
                     volume_label.pack()
+
+                # Calculate the percentage of evolution
+                if len(last_volumes) == 2:
+                    volume1, volume2 = last_volumes
+                    progression_percentage = ((volume1[1] - volume2[1]) / volume1[1]) * 100
+                    progression_label = tk.Label(details_frame, text=f"Progression: {progression_percentage:.2f}%",
+                                                 font=("Helvetica", 12))
+                    progression_label.pack()
 
             else:
                 print(f"No patient found with the name: {patient.name}")
@@ -178,7 +238,8 @@ class PatientApp:
                 image_label.image = photo
                 image_label.pack(pady=10)
 
-            return_button = tk.Button(self.root, text="Return to List", command=self.return_to_list, font=("Helvetica", 12))
+            return_button = tk.Button(self.root, text="Return to List", command=self.return_to_list,
+                                      font=("Helvetica", 12))
             return_button.pack(pady=10)
 
     def get_patient_id(self, patient_name):
@@ -202,11 +263,16 @@ class PatientApp:
 
     def show_detect_alzheimer_interface(self):
         self.clear_widgets()
+
         detect_alzheimer_label = tk.Label(self.root, text="Detect Alzheimer's", font=("Helvetica", 16, "bold"))
         detect_alzheimer_label.pack()
+
         upload_image_button = tk.Button(self.root, text="Upload Image",
                                         command=lambda: self.upload_image(self.selected_index), font=("Helvetica", 14))
         upload_image_button.pack()
+
+        return_button = tk.Button(self.root, text="Return to List", command=self.return_to_list, font=("Helvetica", 12))
+        return_button.pack(side=tk.BOTTOM, pady=10)
 
     def upload_image(self, patient_index):
         file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.png;*.jpg;*.jpeg;*.gif")])
@@ -246,7 +312,7 @@ class PatientApp:
                 print_button = tk.Button(self.root, text="Print Volumes Table", command=self.print_volume_table, font=("Helvetica", 12))
                 print_button.pack()
                 cursor = self.db_connection.cursor()
-                print("offffff", patient_id, predicted_class, segmented_volume, self.get_current_date())
+                #print("Patient", patient_id, predicted_class, segmented_volume, self.get_current_date())
                 cursor.execute(
                     'INSERT INTO volumes (patient_id,predicted_class, volume, date) VALUES (?, ?, ?, ?)',
                     (patient_id, predicted_class, float(segmented_volume), self.get_current_date()))
@@ -272,8 +338,12 @@ class PatientApp:
         image_label.image = photo
         image_label.pack()
 
-        classify_button = tk.Button(self.root, text="Classify Image", command=lambda: self.classify_image(patient_index), font=("Helvetica", 14))
+        classify_button = tk.Button(self.root, text="Classify Image",
+                                    command=lambda: self.classify_image(patient_index), font=("Helvetica", 14))
         classify_button.pack()
+
+        return_button = tk.Button(self.root, text="Return to List", command=self.return_to_list, font=("Helvetica", 12))
+        return_button.pack(pady=10)
 
     def clear_widgets(self):
         # Clear all widgets from the root window
